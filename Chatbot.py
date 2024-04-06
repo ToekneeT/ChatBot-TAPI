@@ -3,9 +3,10 @@ from twitchio.ext import commands
 from collections import defaultdict
 from random import randint, uniform
 import asyncio
+import webbrowser
 
-#DEBUG = False
-DEBUG = True
+DEBUG = False
+#DEBUG = True
 
 # Sets value to 0 if not already in dictionary.
 # Will be the commands sent in by the users.
@@ -56,6 +57,9 @@ class Bot(commands.Bot):
         # We are logged in and ready to chat and use commands...
         print(f'Logged in as | {self.nick}')
         print(f'User id is | {self.user_id}')
+        print(f'Connected channels  | {bot.connected_channels}')
+        # Opens the chat where bot controls will be done on.
+        webbrowser.open_new(config.CMD_CHAT)
         await clear_chat_commands()
 
     # Reads input from another channel to control the bot.
@@ -124,6 +128,7 @@ class Bot(commands.Bot):
         global chat_commands
         global commands_used
         global is_echo_command
+        # Off by one due to iterating after checking. Needs one over, e.x. 101 instead of 100.
         if chat_commands[message.content] >= 100 and is_echo_command:
             await bot.connected_channels[0].send(message.content)
             await self.handle_commands(message)
@@ -205,7 +210,7 @@ class Bot(commands.Bot):
         context = await self.get_context(message)
 
         # Print the contents of our message to console...
-        print(f'{context.author.name}: {message.content}')
+        print('{: <25}: {}'.format(context.author.name, message.content))
 
         await self.command_input(context)
         await self.iterate_commands(message)
