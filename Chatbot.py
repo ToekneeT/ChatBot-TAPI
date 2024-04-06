@@ -65,7 +65,7 @@ class Bot(commands.Bot):
         await clear_chat_commands()
 
     # Reads input from another channel to control the bot.
-    async def command_input(self, author, message):
+    async def command_input(self, author, message, channel):
         global extra_shop
         global is_buy_from_shop
         global sub_cooldown
@@ -74,7 +74,7 @@ class Bot(commands.Bot):
         global is_buy_from_extra_shop
         message = message.lower()
 
-        if author == config.USERNAME and context.channel.name == config.CHANNELS[1]:
+        if author == config.USERNAME and channel == config.CHANNELS[1]:
             if message in ['shop on', 'on']:
                 print('----- Buying from shop is on! -----')
                 is_buy_from_shop = True
@@ -173,16 +173,7 @@ class Bot(commands.Bot):
         # Different delays depending on if it's buying from another shop slot.
         # The stock on extra slots are typically lower, so if there's an extra slot,
         # we want to prioritize that first before the first slot.
-        if is_buy_from_shop:
-            await asyncio.sleep(1.5 if is_buy_from_shop else 0.5)
-            await bot.connected_channels[0].send('!deposit 1')
-            commands_used['!deposit 1'] += 1
-        elif is_buy_from_extra_shop and not is_buy_from_shop:
-            await asyncio.sleep(0.5)
-            await bot.connected_channels[0].send(f'!deposit {extra_shop}')
-            is_buy_from_extra_shop = False
-            commands_used[f'!deposit {extra_shop}'] += 1
-        elif is_buy_from_shop and is_buy_from_extra_shop:
+        if is_buy_from_shop and is_buy_from_extra_shop:
             await asyncio.sleep(0.5)
             await bot.connected_channels[0].send(f'!deposit {extra_shop}')
             await asyncio.sleep(1.5)
@@ -190,6 +181,15 @@ class Bot(commands.Bot):
             is_buy_from_extra_shop = False
             commands_used[f"!deposit 1"] += 1
             commands_used[f"!deposit {extra_shop}"] += 1
+        elif is_buy_from_extra_shop and not is_buy_from_shop:
+            await asyncio.sleep(0.5)
+            await bot.connected_channels[0].send(f'!deposit {extra_shop}')
+            is_buy_from_extra_shop = False
+            commands_used[f'!deposit {extra_shop}'] += 1
+        elif is_buy_from_shop:
+            await asyncio.sleep(1.5 if is_buy_from_shop else 0.5)
+            await bot.connected_channels[0].send('!deposit 1')
+            commands_used['!deposit 1'] += 1
         is_buy_from_shop = False
 
     async def event_message(self, message):
@@ -207,7 +207,7 @@ class Bot(commands.Bot):
         print('{: <17} : {}'.format(context.author.name[:17], message.content))
 
         await self.increment_commands(message.content)
-        await self.command_input(author, message.content)
+        await self.command_input(author, message.content, context.channel.name)
         await self.echo_command_on_threshold(message.content)
         await self.sub_event(author, message.content)
         await self.buy_shop(author, message.content)
