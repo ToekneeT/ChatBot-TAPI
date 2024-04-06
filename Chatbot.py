@@ -5,12 +5,16 @@ from random import randint, uniform
 import asyncio
 import webbrowser
 
-DEBUG = False
-#DEBUG = True
+#DEBUG = False
+DEBUG = True
 
 # Sets value to 0 if not already in dictionary.
 # Will be the commands sent in by the users.
-# Gets reset every minute.
+# If it hits a threshold set in echo_command_on_threshold,
+# it'll echo the command into chat.
+# Gets reset every minute, only want to echo commands
+# that are spammed within a short period of time.
+# That way, it's not just spamming every single command being used.
 chat_commands = defaultdict(lambda: 0)
 # Will keep track of the commands used in chat by the
 # bot throughout the stream. Used to output to a file.
@@ -19,9 +23,7 @@ commands_used = defaultdict(lambda: 0)
 extra_shop = False
 is_buy_from_shop = False
 sub_cooldown = False
-program_should_exit = False
 is_echo_command = False
-#is_cooldown_limit = True
 is_send_reaction_to_sub = True
 is_buy_from_extra_shop = False
 
@@ -63,20 +65,16 @@ class Bot(commands.Bot):
         await clear_chat_commands()
 
     # Reads input from another channel to control the bot.
-    async def command_input(self, context):
+    async def command_input(self, author, message):
         global extra_shop
         global is_buy_from_shop
         global sub_cooldown
-        #global program_should_exit
         global is_echo_command
-        #global is_cooldown_limit = True
         global is_send_reaction_to_sub
         global is_buy_from_extra_shop
-        message = context.message.content.lower()
-        author = context.author.name
-        target_user = config.USERNAME
+        message = message.lower()
 
-        if author == target_user and context.channel.name == config.CHANNELS[1]:
+        if author == config.USERNAME and context.channel.name == config.CHANNELS[1]:
             if message in ['shop on', 'on']:
                 print('----- Buying from shop is on! -----')
                 is_buy_from_shop = True
@@ -96,13 +94,10 @@ class Bot(commands.Bot):
             elif message in ['limit', 'limit on', 'lon']:
                 print('----- Sub cooldown limit on! -----')
                 is_cooldown_limit = True
-            #elif choice in ['limit off', 'loff']:
-            #    print('----- Sub cooldown limit off! -----')
-            #    is_cooldown_limit = False
             elif message in ['status', 's']:
                 print('---------- Status ----------')
                 print(f'----- Buying from Shop: {is_buy_from_shop} -----')
-                if is_buy_from_extra_shop == True:
+                if is_buy_from_extra_shop:
                     print(f'----- Buying shop slot {extra_shop}! -----')
                 print(f'----- Event Command: {is_echo_command} -----')
                 #print(f'----- Sub cooldown limit: {is_cooldown_limit} -----')
@@ -117,89 +112,85 @@ class Bot(commands.Bot):
             elif message in ['commands', 'cmd']:
                 # Will write to a file with how many of each command was used
                 # during the runtime of the bot.
-                file = open('commands.txt', 'w')
+                file = open('commands.csv', 'w')
                 for key in commands_used:
-                    file.write(f'{key}: {commands_used[key]}\n')
+                    file.write(f'{key},{commands_used[key]}\n')
                 file.close()
+            else:
+                print("---------- Invalid Input ----------")
 
     # Echoes a command into chat once a threshold (100) has been reached.
     # Resets the command iteration back to 0 once it echoes.
     async def echo_command_on_threshold(self, message):
         global chat_commands
         global commands_used
-        global is_echo_command
-        # Off by one due to iterating after checking. Needs one over, e.x. 101 instead of 100.
-        if chat_commands[message.content] >= 100 and is_echo_command:
-            await bot.connected_channels[0].send(message.content)
-            await self.handle_commands(message)
+        # Once the number hits 100, bot will echo command into chat.
+        if chat_commands[message] >= 100 and is_echo_command:
+            await bot.connected_channels[0].send(message)
             # Sets that command iteration back to 0 once it echos the command
             # in order to prevent it from being spammed
-            chat_commands[message.content] = 0
-            commands_used[message.content] += 1
+            chat_commands[message] = 0
+            commands_used[message] += 1
 
-    # If a message starts with !, it'll iterate a count variable in a dictionary.
-    async def iterate_commands(self, message):
+    # If a message starts with !, it'll increment a count variable in a dictionary.
+    async def increment_commands(self, message):
         global chat_commands
-        global commands_used
-        if message.content[0] == "!" and message.content.lower() != '!no' and message.content.lower() != '!yes':
-            chat_commands[message.content] += 1
+        # Don't want to read !no or !yes as the dictionary controls what gets echoed.
+        # Don't want to echo them as it can make a bet or make the wrong bet.
+        if message[0] == "!" and message.lower() != '!no' and message.lower() != '!yes':
+            chat_commands[message] += 1
 
-    # When someone subscribes, a certain bot will send a message.
+    # When someone subscribes, an external bot (target_user) will send a message.
     # The bot will then respond by sending an random amount of an emote
     # from a range of 1 to 5 to give variety and decrease the chance it'll
     # send the same message twice.
-    async def sub_event(self, context):
-        message = context.message.content
-        author = context.author.name
+    async def sub_event(self, author, message):
         target_user = config.TARGET_USER[0] if not DEBUG else config.DEBUG_CHANNEL[0]
         if author == target_user and message[0] == "⭐" and is_send_reaction_to_sub:
             await asyncio.sleep(round(uniform(2, 5), 1))
             await bot.connected_channels[0].send('dnkM ' * randint(1, 5))
-            await self.handle_commands(context.message)
+            #await self.handle_commands(context.message)
             await asyncio.sleep(round(uniform(5, 10), 1))
             commands_used["Sub Reaction"] += 1
 
     # Buys shop item depending on a specific user and specific input.
-    async def buy_shop(self, context):
+    async def buy_shop(self, author, message):
         global extra_shop
         global is_buy_from_shop
         global is_buy_from_extra_shop
         global commands_used
-        message = context.message.content
-        author = context.author.name
         target_user = config.TARGET_USER[1] if not DEBUG else config.DEBUG_CHANNEL[0]
+        # Message needs to be the from an external bot, otherwise ignore.
+        # Needs to be buying something, otherwise ignore.
+        if author != target_user or not (is_buy_from_shop or is_buy_from_extra_shop):
+            return
+        # Checks if the external bot has sent a specific message, otherwise ignore.
+        if message != 'The market is now open!':
+            return
         # Different timers depending on which item slot it's going to buy
-        if author == target_user and message == 'The market is now open!' and is_buy_from_shop:
-            # Different delays depending on if it's buying from another shop slot.
-            if is_buy_from_extra_shop:
-                await asyncio.sleep(1.5)
-                await bot.connected_channels[0].send('!deposit 1')
-                await self.handle_commands(context.message)
-                is_buy_from_shop = False
-                commands_used['!deposit 1'] += 1
-            else:
-                await asyncio.sleep(0.5)
-                await bot.connected_channels[0].send('!deposit 1')
-                await self.handle_commands(context.message)
-                is_buy_from_shop = False
-                commands_used['!deposit 1'] += 1
-        elif author == target_user and message == 'The market is now open!' and is_buy_from_extra_shop and not is_buy_from_shop:
+        # Don't want it to buy an item too fast and be too suspicious.
+        # But also want to buy it fast enough the stock doesn't sell out.
+        # Different delays depending on if it's buying from another shop slot.
+        # The stock on extra slots are typically lower, so if there's an extra slot,
+        # we want to prioritize that first before the first slot.
+        if is_buy_from_shop:
+            await asyncio.sleep(1.5 if is_buy_from_shop else 0.5)
+            await bot.connected_channels[0].send('!deposit 1')
+            commands_used['!deposit 1'] += 1
+        elif is_buy_from_extra_shop and not is_buy_from_shop:
             await asyncio.sleep(0.5)
             await bot.connected_channels[0].send(f'!deposit {extra_shop}')
-            await self.handle_commands(context.message)
             is_buy_from_extra_shop = False
             commands_used[f'!deposit {extra_shop}'] += 1
-        elif author == target_user and message == 'The market is now open!' and is_buy_from_shop and is_buy_from_extra_shop:
+        elif is_buy_from_shop and is_buy_from_extra_shop:
             await asyncio.sleep(0.5)
             await bot.connected_channels[0].send(f'!deposit {extra_shop}')
-            await self.handle_commands(context.message)
             await asyncio.sleep(1.5)
             await bot.connected_channels[0].send('!deposit 1')
-            await self.handle_commands(context.message)
-            is_buy_from_shop = False
             is_buy_from_extra_shop = False
             commands_used[f"!deposit 1"] += 1
             commands_used[f"!deposit {extra_shop}"] += 1
+        is_buy_from_shop = False
 
     async def event_message(self, message):
         # Messages with echo set to True are messages sent by the bot...
@@ -208,19 +199,22 @@ class Bot(commands.Bot):
             return
 
         context = await self.get_context(message)
+        author = context.author.name
 
         # Print the contents of our message to console...
-        print('{: <25}: {}'.format(context.author.name, message.content))
+        # Formatted so that all messages start 17 (arbitrary) characters in.
+        # Splice the username if it's too long.
+        print('{: <17} : {}'.format(context.author.name[:17], message.content))
 
-        await self.command_input(context)
-        await self.iterate_commands(message)
-        await self.echo_command_on_threshold(message)
-        await self.sub_event(context)
-        await self.buy_shop(context)
+        await self.increment_commands(message.content)
+        await self.command_input(author, message.content)
+        await self.echo_command_on_threshold(message.content)
+        await self.sub_event(author, message.content)
+        await self.buy_shop(author, message.content)
 
         # Since we have commands and are overriding the default `event_message`
         # We must let the bot know we want to handle and invoke our commands...
-        #await self.handle_commands(message)
+        await self.handle_commands(message)
 
 
 bot = Bot()
