@@ -5,8 +5,8 @@ from random import randint, uniform
 import asyncio
 import webbrowser
 
-DEBUG = False
-#DEBUG = True
+#DEBUG = False
+DEBUG = True
 
 # Sets value to 0 if not already in dictionary.
 # Will be the commands sent in by the users.
@@ -21,11 +21,41 @@ chat_commands = defaultdict(lambda: 0)
 commands_used = defaultdict(lambda: 0)
 # Some global variables to have the bot do different things.
 extra_shop = False
-is_buy_from_shop = False
-is_echo_command = False
-is_send_reaction_to_sub = True
+#is_buy_from_shop = False
+#is_echo_command = False
+#is_send_reaction_to_sub = True
 is_buy_from_extra_shop = False
 
+global_states = {
+    'is_buy_from_shop': False,
+    'is_echo_command': False,
+    'is_send_reaction_to_sub': True,
+}
+
+command_config = ["shop", "event", "extra", ]
+
+async def state_to_text(state):
+    # Converts the boolean to text.
+    return "on" if state else "off"
+
+# Splits the message into parts to determine whether
+# to turn on or off a global state.
+# Defaults to on if the message only contains one word and is in the command list.
+async def parse_message(message):
+    parts = message.split()
+    cmd = parts[0]
+    arg = parts[1] if len(parts) > 1 else "on"
+    return cmd, arg
+
+async def execute_command(message):
+    cmd, arg = parse_message(message)
+    # Any argument other than on will default to off.
+    state = arg == "on"
+
+    if cmd in command_config:
+        print(f'----- {cmd} command is {state_to_text(state)} -----')
+    else:
+        print("----- Invalid input -----")
 
 async def sub_reaction_sleep(sleep_time):
     global is_send_reaction_to_sub
@@ -65,9 +95,9 @@ class Bot(commands.Bot):
     # Reads input from another channel to control the bot.
     async def command_input(self, author, message, channel):
         global extra_shop
-        global is_buy_from_shop
-        global is_echo_command
-        global is_send_reaction_to_sub
+        #global is_buy_from_shop
+        #global is_echo_command
+        #global is_send_reaction_to_sub
         global is_buy_from_extra_shop
         message = message.lower()
 
