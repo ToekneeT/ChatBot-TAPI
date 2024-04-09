@@ -5,8 +5,8 @@ from random import randint, uniform
 import asyncio
 import webbrowser
 
-#DEBUG = False
-DEBUG = True
+DEBUG = False
+#DEBUG = True
 
 # Sets value to 0 if not already in dictionary.
 # Will be the commands sent in by the users.
@@ -22,7 +22,6 @@ commands_used = defaultdict(lambda: 0)
 # Some global variables to have the bot do different things.
 extra_shop = False
 is_buy_from_shop = False
-sub_cooldown = False
 is_echo_command = False
 is_send_reaction_to_sub = True
 is_buy_from_extra_shop = False
@@ -37,7 +36,6 @@ async def sub_reaction_sleep(sleep_time):
 # That way the commands need to be spammed
 # in order for it to be echoed.
 async def clear_chat_commands():
-    global chat_commands
     while True:
         await asyncio.sleep(60)
         chat_commands.clear()
@@ -68,7 +66,6 @@ class Bot(commands.Bot):
     async def command_input(self, author, message, channel):
         global extra_shop
         global is_buy_from_shop
-        global sub_cooldown
         global is_echo_command
         global is_send_reaction_to_sub
         global is_buy_from_extra_shop
@@ -91,9 +88,6 @@ class Bot(commands.Bot):
             elif message in ['event off', 'eoff']:
                 print('----- Event command is off! -----')
                 is_echo_command = False
-            elif message in ['limit', 'limit on', 'lon']:
-                print('----- Sub cooldown limit on! -----')
-                is_cooldown_limit = True
             elif message in ['status', 's']:
                 print('---------- Status ----------')
                 print(f'----- Buying from Shop: {is_buy_from_shop} -----')
@@ -122,8 +116,6 @@ class Bot(commands.Bot):
     # Echoes a command into chat once a threshold (100) has been reached.
     # Resets the command iteration back to 0 once it echoes.
     async def echo_command_on_threshold(self, message):
-        global chat_commands
-        global commands_used
         # Once the number hits 100, bot will echo command into chat.
         if chat_commands[message] >= 100 and is_echo_command:
             await bot.connected_channels[0].send(message)
@@ -134,7 +126,6 @@ class Bot(commands.Bot):
 
     # If a message starts with !, it'll increment a count variable in a dictionary.
     async def increment_commands(self, message):
-        global chat_commands
         # Don't want to read !no or !yes as the dictionary controls what gets echoed.
         # Don't want to echo them as it can make a bet or make the wrong bet.
         if message[0] == "!" and message.lower() != '!no' and message.lower() != '!yes':
@@ -158,7 +149,6 @@ class Bot(commands.Bot):
         global extra_shop
         global is_buy_from_shop
         global is_buy_from_extra_shop
-        global commands_used
         target_user = config.TARGET_USER[1] if not DEBUG else config.DEBUG_CHANNEL[0]
         # Message needs to be the from an external bot, otherwise ignore.
         # Needs to be buying something, otherwise ignore.
