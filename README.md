@@ -20,9 +20,11 @@ The first library is the main driving force of the bot.
 Python 3.7+
 
 `pip install twitchio`
+
 [Twitchio](https://twitchio.dev/en/stable/)
 
 You'll also need Asyncio as it's used for timers within the bot.
+
 `pip install asyncio`
 
 ### config file
@@ -31,6 +33,7 @@ In order for the bot to run, you'll need a `config.py` file. The file is importe
 You can find your [OAUTH token here](https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/)
 
 The format of the config file is:
+
 `OAUTH_TOKEN = '<token here>'
 CHANNELS = ['<twitch channel(s)>']
 DEBUG_CHANNEL = ['<a debug channel if you want to test.>']
