@@ -37,4 +37,5 @@ The format of the config file is:
 `OAUTH_TOKEN = '<token here>'
 CHANNELS = ['<twitch channel(s)>']
 DEBUG_CHANNEL = ['<a debug channel if you want to test.>']
-TARGET_USER = ['<target users>]`
+TARGET_USER = ['<target users>]
+CMD_CHAT = '<URL of the channel you want to pass the bot commands>'`
