@@ -177,7 +177,7 @@ class Bot(commands.Bot):
             is_buy_from_extra_shop = False
             commands_used[f'!deposit {extra_shop}'] += 1
         elif is_buy_from_shop:
-            await asyncio.sleep(1.5 if is_buy_from_shop else 0.5)
+            await asyncio.sleep(0.5)
             await bot.connected_channels[0].send('!deposit 1')
             commands_used['!deposit 1'] += 1
         is_buy_from_shop = False
