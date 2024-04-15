@@ -11,7 +11,7 @@ There's always a special cosmetic for these events, but it's only released when 
 There have been times the stream has run for over 24 hours and I have missed the cosmetic.
 To counteract that, I have the bot echo commands that are spammed in the chat.
 
-I don't recommend this bot as again, it's very niche and very specific to a channel; however, if you still want to run it, I will list the instructions below.
+I don't recommend this bot as it is, it's very niche and very specific to a channel; however, if you still want to run it, I will list the instructions below.
 
 ## How to run
 In order to run, you'll need a few libraries.
